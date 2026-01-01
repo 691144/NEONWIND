@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Orbitron font - embedded for offline PWA support */
+@font-face {
+  font-family: 'Orbitron';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/orbitron/v31/yMJMMIlzdpvBhQQL_SC3X9yhF25-T1nyGy6BoWgz.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Orbitron';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/orbitron/v31/yMJMMIlzdpvBhQQL_SC3X9yhF25-T1nyKS6BoWgz.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Orbitron';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/orbitron/v31/yMJMMIlzdpvBhQQL_SC3X9yhF25-T1nyCC6BoWgz.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Orbitron';
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/orbitron/v31/yMJMMIlzdpvBhQQL_SC3X9yhF25-T1nyYS6BoWgz.woff2') format('woff2');
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  background-color: #000;
+  font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif;
+}
+
+.font-digital { font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif; }
+
+.score-popup {
+  position: absolute;
+  color: white;
+  font-weight: 900;
+  font-size: 1.5rem;
+  text-shadow: 0 0 5px black;
+  animation: floatUp 1s ease-out forwards;
+  pointer-events: none;
+  z-index: 50;
+}
+
+.shake-anim {
+  animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+}

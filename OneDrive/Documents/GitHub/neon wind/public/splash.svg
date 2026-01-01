@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#05060f"/>
+      <stop offset="50%" stop-color="#081b2f"/>
+      <stop offset="100%" stop-color="#0a0d1a"/>
+    </linearGradient>
+    <radialGradient id="g2" cx="50%" cy="50%" r="65%">
+      <stop offset="0%" stop-color="#00fff5" stop-opacity="0.45"/>
+      <stop offset="60%" stop-color="#00b7ff" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="g3" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ffef8a" stop-opacity="0.85"/>
+      <stop offset="30%" stop-color="#ff8f3f" stop-opacity="0.7"/>
+      <stop offset="70%" stop-color="#00f0ff" stop-opacity="0.65"/>
+      <stop offset="100%" stop-color="#8b5bff" stop-opacity="0.8"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="18" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#g1)" />
+  <rect width="100%" height="100%" fill="url(#g2)" opacity="0.55" />
+  <g stroke="url(#g3)" stroke-width="6" fill="none" filter="url(#glow)" opacity="0.75">
+    <path d="M-200 900 Q 300 650 600 900 T 1400 900 T 2200 900" />
+    <path d="M-200 750 Q 250 550 650 750 T 1450 750 T 2200 750" opacity="0.6" />
+    <path d="M-200 1020 Q 320 820 700 1020 T 1500 1020 T 2200 1020" opacity="0.45" />
+  </g>
+  <g fill="none" stroke="#00fff5" stroke-width="3" opacity="0.5">
+    <circle cx="960" cy="540" r="420" />
+    <circle cx="960" cy="540" r="520" opacity="0.4" />
+    <circle cx="960" cy="540" r="320" opacity="0.35" />
+  </g>
+  <g filter="url(#glow)">
+    <path d="M820 620 L980 520 L1140 620 L980 660 Z" fill="#00fff5" opacity="0.9" />
+    <rect x="950" y="500" width="60" height="170" rx="6" fill="#00d4ff" opacity="0.8" />
+    <circle cx="980" cy="520" r="18" fill="#fffaf0" opacity="0.95" />
+  </g>
+  <text x="50%" y="44%" text-anchor="middle" fill="#e8f9ff" font-family="'Orbitron', 'Segoe UI', sans-serif" font-size="96" font-weight="900" letter-spacing="12" opacity="0.9">
+    NEON WINDER
+  </text>
+  <text x="50%" y="52%" text-anchor="middle" fill="#7ff9ff" font-family="'Roboto Mono', 'Consolas', monospace" font-size="24" letter-spacing="8" opacity="0.8">
+    HYPERLANE SYSTEMS ONLINE
+  </text>
+  <text x="50%" y="58%" text-anchor="middle" fill="#ffc987" font-family="'Roboto Mono', 'Consolas', monospace" font-size="18" letter-spacing="5" opacity="0.8">
+    INITIALIZING NEURAL LINK...
+  </text>
+</svg>

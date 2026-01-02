@@ -166,14 +166,20 @@ export const GameScene: React.FC<GameSceneProps> = ({
                 engine.togglePause();
             }
         };
+        const handleOrientationChange = () => {
+            // Delay resize to allow browser to complete orientation change
+            setTimeout(() => engine.onWindowResize(), 100);
+        };
 
         window.addEventListener('resize', handleResize);
+        window.addEventListener('orientationchange', handleOrientationChange);
         document.addEventListener('mousemove', handleMouseMove);
         document.addEventListener('touchmove', handleTouchMove, { passive: false });
         document.addEventListener('keydown', handleKeyDown);
 
         return () => {
             window.removeEventListener('resize', handleResize);
+            window.removeEventListener('orientationchange', handleOrientationChange);
             document.removeEventListener('mousemove', handleMouseMove);
             document.removeEventListener('touchmove', handleTouchMove);
             document.removeEventListener('keydown', handleKeyDown);

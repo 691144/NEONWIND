@@ -159,7 +159,9 @@ export const GameScene: React.FC<GameSceneProps> = ({
 
         const handleResize = () => engine.onWindowResize();
         const handleMouseMove = (e: MouseEvent) => engine.onMouseMove(e);
+        const handleTouchStart = (e: TouchEvent) => engine.onTouchStart(e);
         const handleTouchMove = (e: TouchEvent) => engine.onTouchMove(e);
+        const handleTouchEnd = () => engine.onTouchEnd();
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.code === 'Space') {
                 e.preventDefault();
@@ -174,14 +176,18 @@ export const GameScene: React.FC<GameSceneProps> = ({
         window.addEventListener('resize', handleResize);
         window.addEventListener('orientationchange', handleOrientationChange);
         document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('touchstart', handleTouchStart, { passive: false });
         document.addEventListener('touchmove', handleTouchMove, { passive: false });
+        document.addEventListener('touchend', handleTouchEnd);
         document.addEventListener('keydown', handleKeyDown);
 
         return () => {
             window.removeEventListener('resize', handleResize);
             window.removeEventListener('orientationchange', handleOrientationChange);
             document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('touchstart', handleTouchStart);
             document.removeEventListener('touchmove', handleTouchMove);
+            document.removeEventListener('touchend', handleTouchEnd);
             document.removeEventListener('keydown', handleKeyDown);
             engine.dispose();
         };
@@ -406,6 +412,11 @@ class GameEngine {
     // Input Handling
     private mousePos = { x: 0, y: 0 };
     private targetMousePos = { x: 0, y: 0 }; // For input smoothing
+    
+    // Touch tracking for relative control
+    private touchStartX: number = 0;
+    private touchStartY: number = 0;
+    private touchActive: boolean = false;
     
     // Control Lock State
     private isControlsLocked: boolean = false;
@@ -980,13 +991,36 @@ class GameEngine {
         this.targetMousePos.y = -(event.clientY / window.innerHeight) * 2 + 1;
     }
 
-    public onTouchMove(event: TouchEvent) {
+    public onTouchStart(event: TouchEvent) {
         if (event.touches.length > 0) {
-            // Update target position for movement
-            this.targetMousePos.x = (event.touches[0].clientX / window.innerWidth) * 2 - 1;
-            this.targetMousePos.y = -(event.touches[0].clientY / window.innerHeight) * 2 + 1;
-            // Mobile pause uses the pause button in UIOverlay
+            // Record starting touch position
+            this.touchStartX = event.touches[0].clientX;
+            this.touchStartY = event.touches[0].clientY;
+            this.touchActive = true;
         }
+    }
+    
+    public onTouchMove(event: TouchEvent) {
+        if (event.touches.length > 0 && this.touchActive) {
+            // Calculate relative movement from touch start
+            const currentX = event.touches[0].clientX;
+            const currentY = event.touches[0].clientY;
+            
+            // Normalize delta to screen size for consistent sensitivity
+            const deltaX = (currentX - this.touchStartX) / window.innerWidth * 3;
+            const deltaY = (currentY - this.touchStartY) / window.innerHeight * 3;
+            
+            // Clamp to -1 to 1 range
+            this.targetMousePos.x = Math.max(-1, Math.min(1, deltaX));
+            this.targetMousePos.y = Math.max(-1, Math.min(1, -deltaY)); // Invert Y
+        }
+    }
+    
+    public onTouchEnd() {
+        this.touchActive = false;
+        // Smoothly return to center when touch ends
+        this.targetMousePos.x = 0;
+        this.targetMousePos.y = 0;
     }
 
     private reset() {
@@ -1060,6 +1094,14 @@ class GameEngine {
             vy: 0,
             segmentTimer: 0
         };
+        
+        // Add straight tunnel section at start (about 1.5 seconds at base speed)
+        // This gives the player time to take control after "GO!"
+        const straightLength = 600; // About 60 map segments = ~1.5 sec
+        for (let i = 0; i < straightLength / MAP_RES; i++) {
+            this.terrainMap.push({ x: 0, y: 0 });
+        }
+        
         this.appendMap(MAP_LEN);
     }
 

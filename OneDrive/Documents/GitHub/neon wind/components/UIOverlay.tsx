@@ -105,54 +105,70 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
 
             {/* Speed Bar - Bottom of screen during gameplay */}
             {gameState === GameState.PLAYING && (
-                <div className="absolute bottom-2 landscape:bottom-1 left-1/2 -translate-x-1/2 w-full max-w-xl landscape:max-w-md px-4 pointer-events-none">
-                    {/* Pause Button - Centered above speedometer */}
-                    <div className="flex justify-center mb-2 landscape:mb-1">
+                <div className="absolute bottom-2 landscape:bottom-0.5 left-1/2 -translate-x-1/2 w-full max-w-xl landscape:max-w-sm px-4 landscape:px-2 pointer-events-none">
+                    {/* Pause + Orientation buttons row */}
+                    <div className="flex justify-center gap-2 mb-1 landscape:mb-0.5">
+                        {/* Orientation toggle button - mobile only */}
+                        <button
+                            onClick={() => {
+                                const isLandscape = window.innerWidth > window.innerHeight;
+                                if (screen.orientation && screen.orientation.lock) {
+                                    screen.orientation.lock(isLandscape ? 'portrait' : 'landscape').catch(() => {});
+                                }
+                            }}
+                            className="w-8 h-8 landscape:w-6 landscape:h-6 rounded-full bg-black/60 backdrop-blur-md border border-cyan-500/40 flex items-center justify-center pointer-events-auto hover:bg-cyan-500/20 transition-all md:hidden"
+                            title="Rotate"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 landscape:w-3 landscape:h-3 text-cyan-400">
+                                <path fillRule="evenodd" d="M4.755 10.059a7.5 7.5 0 0112.548-3.364l1.903 1.903h-3.183a.75.75 0 100 1.5h4.992a.75.75 0 00.75-.75V4.356a.75.75 0 00-1.5 0v3.18l-1.9-1.9A9 9 0 003.306 9.67a.75.75 0 101.45.388zm15.408 3.352a.75.75 0 00-.919.53 7.5 7.5 0 01-12.548 3.364l-1.902-1.903h3.183a.75.75 0 000-1.5H2.984a.75.75 0 00-.75.75v4.992a.75.75 0 001.5 0v-3.18l1.9 1.9a9 9 0 0015.059-4.035.75.75 0 00-.53-.918z" clipRule="evenodd" />
+                            </svg>
+                        </button>
+                        {/* Pause button */}
                         <button
                             onClick={onPause}
-                            className="w-10 h-10 landscape:w-8 landscape:h-8 rounded-full bg-black/60 backdrop-blur-md border-2 border-cyan-500/50 flex items-center justify-center pointer-events-auto hover:bg-cyan-500/20 hover:border-cyan-400 transition-all duration-200 shadow-[0_0_15px_rgba(0,255,255,0.3)] hover:shadow-[0_0_25px_rgba(0,255,255,0.5)]"
+                            className="w-8 h-8 landscape:w-6 landscape:h-6 rounded-full bg-black/60 backdrop-blur-md border-2 border-cyan-500/50 flex items-center justify-center pointer-events-auto hover:bg-cyan-500/20 hover:border-cyan-400 transition-all duration-200 shadow-[0_0_15px_rgba(0,255,255,0.3)] hover:shadow-[0_0_25px_rgba(0,255,255,0.5)]"
                             title="Pause"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 landscape:w-4 landscape:h-4 text-cyan-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 landscape:w-3 landscape:h-3 text-cyan-400">
                                 <path fillRule="evenodd" d="M6.75 5.25a.75.75 0 01.75-.75H9a.75.75 0 01.75.75v13.5a.75.75 0 01-.75.75H7.5a.75.75 0 01-.75-.75V5.25zm7.5 0A.75.75 0 0115 4.5h1.5a.75.75 0 01.75.75v13.5a.75.75 0 01-.75.75H15a.75.75 0 01-.75-.75V5.25z" clipRule="evenodd" />
                             </svg>
                         </button>
                     </div>
                     
-                    {/* Speed readout above the bar - compact in landscape */}
-                    <div className="mb-1 landscape:mb-0.5 flex items-center justify-center px-4 landscape:px-2 py-1 landscape:py-0.5 bg-black/50 backdrop-blur-md rounded-lg border border-cyan-500/30 pointer-events-none">
-                        <span ref={speedRef} className="font-digital text-3xl landscape:text-xl font-black text-cyan-400 drop-shadow-[0_0_10px_rgba(0,255,255,0.8)] tracking-widest w-24 landscape:w-16 text-center">0</span>
-                        <span className="font-digital text-xs landscape:text-[10px] text-cyan-400/70 ml-1 pt-1">KM/H</span>
+                    {/* Speed readout above the bar - more compact in landscape */}
+                    <div className="mb-1 landscape:mb-0 flex items-center justify-center px-3 landscape:px-1.5 py-0.5 landscape:py-0 bg-black/50 backdrop-blur-md rounded-md border border-cyan-500/30 pointer-events-none">
+                        <span ref={speedRef} className="font-digital text-2xl landscape:text-base font-black text-cyan-400 drop-shadow-[0_0_10px_rgba(0,255,255,0.8)] tracking-widest w-20 landscape:w-12 text-center">0</span>
+                        <span className="font-digital text-[10px] landscape:text-[8px] text-cyan-400/70 ml-1">KM/H</span>
                     </div>
 
-                    <div className="bg-black/60 backdrop-blur-md rounded-lg p-2 landscape:p-1.5 border border-cyan-500/30">
-                        <div className="flex justify-between text-[10px] landscape:text-[8px] text-cyan-400 mb-0.5">
+                    <div className="bg-black/60 backdrop-blur-md rounded-md p-1.5 landscape:p-1 border border-cyan-500/30">
+                        <div className="flex justify-between text-[9px] landscape:text-[7px] text-cyan-400 mb-0.5 landscape:hidden">
                             <span ref={speedBarRangeRef}>600 - 700 KM/H</span>
                             <span>TOP: <span ref={speedBarTopRef}>0</span></span>
                         </div>
-                        <div className="flex items-center gap-2 landscape:gap-1">
+                        <div className="flex items-center gap-1.5 landscape:gap-1">
                             {/* Smooth indicator - left side */}
-                            <div className="flex flex-col items-center min-w-[40px] landscape:min-w-[30px]">
-                                <svg viewBox="0 0 40 40" className="w-5 h-5 landscape:w-4 landscape:h-4 mb-0.5">
+                            <div className="flex flex-col items-center min-w-[32px] landscape:min-w-[24px]">
+                                <svg viewBox="0 0 40 40" className="w-4 h-4 landscape:w-3 landscape:h-3">
                                     <path d="M5 20 Q12 10 20 20 Q28 30 35 20" stroke="#00BFFF" strokeWidth="4" fill="none" strokeLinecap="round"/>
                                 </svg>
-                                <span id="smooth-percent" className="text-[10px] landscape:text-[8px] font-bold text-sky-400 opacity-30 transition-opacity">0%</span>
+                                <span id="smooth-percent" className="text-[8px] landscape:text-[6px] font-bold text-sky-400 opacity-30 transition-opacity">0%</span>
                             </div>
                             
                             {/* Speed bar */}
-                            <div ref={speedBarRef} className="flex-1 h-6 landscape:h-4 bg-gray-800 rounded-full overflow-hidden relative">
+                            <div ref={speedBarRef} className="flex-1 h-5 landscape:h-3 bg-gray-800 rounded-full overflow-hidden relative">
                                 {/* Current speed fill */}
                                 <div ref={speedBarFillRef} className="h-full bg-gradient-to-r from-cyan-500 to-cyan-400 transition-all" style={{ width: '50%' }} />
                                 {/* Top speed needle */}
-                                <div ref={speedBarNeedleRef} className="absolute top-0 h-full w-1 bg-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.8)]" style={{ left: '80%' }} />
+                                <div ref={speedBarNeedleRef} className="absolute top-0 h-full w-0.5 bg-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.8)]" style={{ left: '80%' }} />
                             </div>
                             
                             {/* Wide indicator - right side */}
-                            <div className="flex flex-col items-center min-w-[40px] landscape:min-w-[30px]">
-                                <svg viewBox="0 0 40 40" className="w-5 h-5 landscape:w-4 landscape:h-4 mb-0.5">
+                            <div className="flex flex-col items-center min-w-[32px] landscape:min-w-[24px]">
+                                <svg viewBox="0 0 40 40" className="w-4 h-4 landscape:w-3 landscape:h-3">
                                     <path d="M8 20 L16 14 L16 18 L24 18 L24 14 L32 20 L24 26 L24 22 L16 22 L16 26 Z" fill="#C0C0C0"/>
                                 </svg>
-                                <span id="wide-percent" className="text-[10px] landscape:text-[8px] font-bold text-gray-400 opacity-30 transition-opacity">0%</span>
+                                <span id="wide-percent" className="text-[8px] landscape:text-[6px] font-bold text-gray-400 opacity-30 transition-opacity">0%</span>
                             </div>
                         </div>
                     </div>

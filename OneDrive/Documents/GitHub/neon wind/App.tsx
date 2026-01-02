@@ -21,6 +21,7 @@ function App() {
     const speedBarRangeRef = useRef<HTMLSpanElement>(null);
     const speedBarTopRef = useRef<HTMLSpanElement>(null);
     const pauseOverlayRef = useRef<HTMLDivElement>(null);
+    const gameSceneRef = useRef<{ togglePause: () => void } | null>(null);
 
     // Load leaderboard on mount
     useEffect(() => {
@@ -73,12 +74,17 @@ function App() {
         localStorage.setItem('sky_ace_lb', JSON.stringify(newLb));
     };
 
+    const handlePause = () => {
+        gameSceneRef.current?.togglePause();
+    };
+
     return (
         <div style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden', backgroundColor: 'black' }}>
             <GameScene 
                 gameState={gameState} 
                 startSpeed={startSpeed}
                 onGameOver={handleGameOver}
+                gameSceneRef={gameSceneRef}
                 scoreRef={scoreRef}
                 speedRef={speedRef}
                 healthBarRef={healthBarRef}
@@ -99,6 +105,7 @@ function App() {
                 onRestart={handleRestart}
                 onHome={handleHome}
                 onSaveScore={handleSaveScore}
+                onPause={handlePause}
                 scoreRef={scoreRef}
                 speedRef={speedRef}
                 healthBarRef={healthBarRef}

@@ -17,6 +17,7 @@ interface GameSceneProps {
     gameState: GameState;
     startSpeed: number; // 200 - 700 range from slider
     onGameOver: (score: number) => void;
+    gameSceneRef?: React.MutableRefObject<{ togglePause: () => void } | null>;
     scoreRef: React.RefObject<HTMLSpanElement>;
     speedRef: React.RefObject<HTMLSpanElement>;
     healthBarRef: React.RefObject<HTMLDivElement>;
@@ -33,6 +34,7 @@ export const GameScene: React.FC<GameSceneProps> = ({
     gameState,
     startSpeed,
     onGameOver,
+    gameSceneRef,
     scoreRef,
     speedRef,
     healthBarRef,
@@ -64,7 +66,7 @@ export const GameScene: React.FC<GameSceneProps> = ({
                 onGameOver: (finalScore) => {
                     onGameOver(finalScore);
                 },
-                onUpdateHUD: (score, health, maxHealth, healthLevel, speed) => {
+                onUpdateHUD: (score, health, maxHealth, healthLevel, speed, smoothPercent, widePercent) => {
                     if (scoreRef.current) scoreRef.current.innerText = Math.floor(score).toString();
                     if (speedRef.current) speedRef.current.innerText = (speed * 100).toFixed(0);
 
@@ -121,11 +123,30 @@ export const GameScene: React.FC<GameSceneProps> = ({
                             multiplierEl.className = 'text-lg font-black text-green-400 drop-shadow-[0_0_8px_rgba(74,222,128,0.8)] min-w-[40px] text-right';
                         }
                     }
+                    
+                    // Update smooth and wide percentage indicators
+                    const smoothEl = document.getElementById('smooth-percent');
+                    const wideEl = document.getElementById('wide-percent');
+                    if (smoothEl) {
+                        smoothEl.innerText = `${Math.round(smoothPercent)}%`;
+                        smoothEl.style.opacity = smoothPercent > 0 ? '1' : '0.3';
+                    }
+                    if (wideEl) {
+                        wideEl.innerText = `${Math.round(widePercent)}%`;
+                        wideEl.style.opacity = widePercent > 0 ? '1' : '0.3';
+                    }
                 }
             }
         );
 
         engineRef.current = engine;
+
+        // Expose togglePause to parent via ref
+        if (gameSceneRef) {
+            gameSceneRef.current = {
+                togglePause: () => engine.togglePause()
+            };
+        }
 
         // Defer showing canvas until after splash screen is rendered
         // This ensures UIOverlay is visible before the 3D tunnel
@@ -139,18 +160,23 @@ export const GameScene: React.FC<GameSceneProps> = ({
         const handleResize = () => engine.onWindowResize();
         const handleMouseMove = (e: MouseEvent) => engine.onMouseMove(e);
         const handleTouchMove = (e: TouchEvent) => engine.onTouchMove(e);
-        const handleDoubleClick = () => engine.togglePause();
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                engine.togglePause();
+            }
+        };
 
         window.addEventListener('resize', handleResize);
         document.addEventListener('mousemove', handleMouseMove);
         document.addEventListener('touchmove', handleTouchMove, { passive: false });
-        document.addEventListener('dblclick', handleDoubleClick);
+        document.addEventListener('keydown', handleKeyDown);
 
         return () => {
             window.removeEventListener('resize', handleResize);
             document.removeEventListener('mousemove', handleMouseMove);
             document.removeEventListener('touchmove', handleTouchMove);
-            document.removeEventListener('dblclick', handleDoubleClick);
+            document.removeEventListener('keydown', handleKeyDown);
             engine.dispose();
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -347,6 +373,11 @@ class GameEngine {
     // Shield visual mesh
     private shieldMesh: THREE.Mesh | null = null;
     
+    // Quest ending sequence state
+    private isGameOverSequence: boolean = false;
+    private gameOverTimer: number = 0;
+    private questOverlayEl: HTMLDivElement | null = null;
+    
     private settings: {
         label: string;
         baseSpeed: number;
@@ -406,7 +437,7 @@ class GameEngine {
 
     private callbacks: {
         onGameOver: (score: number) => void;
-        onUpdateHUD: (score: number, health: number, maxHealth: number, healthLevel: number, speed: number) => void;
+        onUpdateHUD: (score: number, health: number, maxHealth: number, healthLevel: number, speed: number, smoothPercent: number, widePercent: number) => void;
     };
 
     // Current speed range minimum for speed bar
@@ -576,27 +607,31 @@ class GameEngine {
                 
             case RingType.SMOOTH:
                 // Blue ring: permanent reduction to turn aggression (decays over time)
+                // Effect scales with speed: faster = bigger reduction boost
+                const smoothSpeedMultiplier = 1.0 + (this.currentSpeed - 3.0) * 0.1;
                 this.smoothBoost = Math.min(
-                    RING_EFFECTS.SMOOTH.maxReduction,
-                    this.smoothBoost + RING_EFFECTS.SMOOTH.reductionAmount
+                    RING_EFFECTS.SMOOTH.maxReduction * smoothSpeedMultiplier,
+                    this.smoothBoost + RING_EFFECTS.SMOOTH.reductionAmount * smoothSpeedMultiplier
                 );
-                this.createPopup("SMOOTH", position);
+                this.createBalloonIcon('smooth', position);
                 break;
                 
             case RingType.WIDE:
                 // Silver ring: permanent tunnel width boost (decays over time)
+                // Effect scales with speed: faster = bigger width boost
+                const wideSpeedMultiplier = 1.0 + (this.currentSpeed - 3.0) * 0.15;
                 this.wideBoost = Math.min(
-                    RING_EFFECTS.WIDE.maxBoost,
-                    this.wideBoost + RING_EFFECTS.WIDE.widthBoost
+                    RING_EFFECTS.WIDE.maxBoost * wideSpeedMultiplier,
+                    this.wideBoost + RING_EFFECTS.WIDE.widthBoost * wideSpeedMultiplier
                 );
-                this.createPopup("WIDE", position);
+                this.createBalloonIcon('wide', position);
                 break;
                 
             case RingType.SHIELD:
                 this.applyBuff(BuffType.SHIELD, RING_EFFECTS.SHIELD.duration);
                 this.isShieldActive = true;
                 this.showShieldMesh(true);
-                this.createPopup("SHIELD!", position);
+                this.createBalloonIcon('shield', position);
                 break;
         }
     }
@@ -646,11 +681,13 @@ class GameEngine {
             this.wideBoost = Math.max(0, this.wideBoost - RING_EFFECTS.WIDE.decayRate);
         }
         
-        // Pulse the shield mesh when active
+        // Animate the shield mesh when active - rotate rings for 3D effect
         if (this.shieldMesh && this.isShieldActive) {
-            const time = Date.now() * 0.003;
-            const pulse = 0.2 + Math.sin(time) * 0.1;
-            (this.shieldMesh.material as THREE.MeshBasicMaterial).opacity = pulse;
+            const time = Date.now() * 0.002;
+            // Rotate the shield group for dynamic 3D appearance
+            this.shieldMesh.rotation.x = time * 0.5;
+            this.shieldMesh.rotation.y = time * 0.3;
+            this.shieldMesh.rotation.z = time * 0.2;
         }
     }
     
@@ -696,7 +733,7 @@ class GameEngine {
         pauseOverlayRef: React.RefObject<HTMLDivElement>,
         callbacks: {
             onGameOver: (score: number) => void;
-            onUpdateHUD: (score: number, health: number, maxHealth: number, healthLevel: number, speed: number) => void;
+            onUpdateHUD: (score: number, health: number, maxHealth: number, healthLevel: number, speed: number, smoothPercent: number, widePercent: number) => void;
         }
     ) {
         this.speedRef = speedRef;
@@ -942,26 +979,8 @@ class GameEngine {
             // Update target position for movement
             this.targetMousePos.x = (event.touches[0].clientX / window.innerWidth) * 2 - 1;
             this.targetMousePos.y = -(event.touches[0].clientY / window.innerHeight) * 2 + 1;
-
-            // Check for tap vs drag
-            this.handleTapDetection(event.touches[0].clientX, event.touches[0].clientY);
+            // Mobile pause uses the pause button in UIOverlay
         }
-    }
-
-    private handleTapDetection(x: number, y: number) {
-        const now = Date.now();
-        const dx = x - this.lastTapX;
-        const dy = y - this.lastTapY;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-
-        // If tap is short (<300ms) and minimal movement (<10px), treat as tap
-        if (now - this.tapStartTime < 300 && dist < 10) {
-            this.togglePause();
-        }
-
-        this.tapStartTime = now;
-        this.lastTapX = x;
-        this.lastTapY = y;
     }
 
     private reset() {
@@ -979,6 +998,14 @@ class GameEngine {
         // Reset decay-based boosts
         this.smoothBoost = 0;
         this.wideBoost = 0;
+        
+        // Reset quest ending state
+        this.isGameOverSequence = false;
+        this.gameOverTimer = 0;
+        if (this.questOverlayEl) {
+            this.questOverlayEl.remove();
+            this.questOverlayEl = null;
+        }
         
         if (this.plane) {
             this.plane.position.set(0, 0, 0);
@@ -999,7 +1026,7 @@ class GameEngine {
         
         this.sparkSystem.reset();
 
-        this.callbacks.onUpdateHUD(0, HEALTH_SETTINGS.initialHealth, HEALTH_SETTINGS.initialMaxHealth, 1, this.maxSpeedReached);
+        this.callbacks.onUpdateHUD(0, HEALTH_SETTINGS.initialHealth, HEALTH_SETTINGS.initialMaxHealth, 1, this.maxSpeedReached, 0, 0);
         
         // Reset Audio
         if (this.audioCtx) {
@@ -1170,19 +1197,44 @@ class GameEngine {
     }
     
     private createShieldMesh() {
-        // Green transparent sphere that surrounds the plane when shield is active
-        const shieldGeometry = new THREE.SphereGeometry(15, 32, 24);
-        const shieldMaterial = new THREE.MeshBasicMaterial({
-            color: 0x00FF00,
+        // Hollow sphere shield with enhanced 3D perception - subtle visibility
+        const shieldGroup = new THREE.Group();
+        
+        // Outer ring/edge highlight - compact, closer to craft
+        const outerRingGeometry = new THREE.TorusGeometry(13, 0.25, 12, 48);
+        const outerRingMaterial = new THREE.MeshBasicMaterial({
+            color: 0x00FF66,
             transparent: true,
-            opacity: 0.25,
-            side: THREE.DoubleSide,
+            opacity: 0.2,
             blending: THREE.AdditiveBlending,
         });
+        const outerRingH = new THREE.Mesh(outerRingGeometry, outerRingMaterial);
+        outerRingH.rotation.x = Math.PI / 2; // Horizontal ring
+        shieldGroup.add(outerRingH);
         
-        this.shieldMesh = new THREE.Mesh(shieldGeometry, shieldMaterial);
+        const outerRingV = new THREE.Mesh(outerRingGeometry, outerRingMaterial);
+        // Vertical ring - no rotation needed
+        shieldGroup.add(outerRingV);
+        
+        const outerRingD = new THREE.Mesh(outerRingGeometry, outerRingMaterial);
+        outerRingD.rotation.y = Math.PI / 2; // Depth ring
+        shieldGroup.add(outerRingD);
+        
+        // Wireframe sphere for hollow look - compact and subtle
+        const wireGeometry = new THREE.IcosahedronGeometry(12, 1);
+        const wireMaterial = new THREE.MeshBasicMaterial({
+            color: 0x00FF88,
+            transparent: true,
+            opacity: 0.05,
+            wireframe: true,
+            blending: THREE.AdditiveBlending,
+        });
+        const wireSphere = new THREE.Mesh(wireGeometry, wireMaterial);
+        shieldGroup.add(wireSphere);
+        
+        this.shieldMesh = shieldGroup as unknown as THREE.Mesh;
         this.shieldMesh.visible = false;
-        this.plane.add(this.shieldMesh); // Attach to plane so it follows
+        this.plane.add(this.shieldMesh);
     }
     
     private showShieldMesh(visible: boolean) {
@@ -1313,6 +1365,65 @@ class GameEngine {
         }
     }
 
+    private createBalloonIcon(type: 'smooth' | 'wide' | 'shield' | 'heal', pos: THREE.Vector3) {
+        const vector = pos.clone();
+        vector.project(this.camera);
+        const x = (vector.x * .5 + .5) * window.innerWidth;
+        const y = (-(vector.y * .5) + .5) * window.innerHeight;
+
+        const el = document.createElement('div');
+        el.className = 'balloon-icon';
+        
+        // Create SVG icons based on type
+        let iconSvg = '';
+        let color = '';
+        
+        switch(type) {
+            case 'smooth':
+                color = '#00BFFF'; // Blue
+                iconSvg = `<svg viewBox="0 0 40 40" width="40" height="40">
+                    <path d="M5 20 Q12 10 20 20 Q28 30 35 20" stroke="${color}" stroke-width="4" fill="none" stroke-linecap="round"/>
+                </svg>`;
+                break;
+            case 'wide':
+                color = '#C0C0C0'; // Silver
+                iconSvg = `<svg viewBox="0 0 40 40" width="40" height="40">
+                    <path d="M8 20 L16 14 L16 18 L24 18 L24 14 L32 20 L24 26 L24 22 L16 22 L16 26 Z" fill="${color}"/>
+                </svg>`;
+                break;
+            case 'shield':
+                color = '#00FF00'; // Green
+                iconSvg = `<svg viewBox="0 0 40 40" width="40" height="40">
+                    <path d="M20 4 L32 10 L32 22 C32 30 20 36 20 36 C20 36 8 30 8 22 L8 10 Z" fill="${color}" opacity="0.8"/>
+                    <path d="M20 8 L28 12 L28 21 C28 27 20 32 20 32 C20 32 12 27 12 21 L12 12 Z" fill="none" stroke="white" stroke-width="1" opacity="0.5"/>
+                </svg>`;
+                break;
+            case 'heal':
+                color = '#FFD700'; // Gold
+                iconSvg = `<svg viewBox="0 0 40 40" width="40" height="40">
+                    <rect x="16" y="8" width="8" height="24" rx="2" fill="${color}"/>
+                    <rect x="8" y="16" width="24" height="8" rx="2" fill="${color}"/>
+                </svg>`;
+                break;
+        }
+        
+        el.innerHTML = iconSvg;
+        el.style.cssText = `
+            position: fixed;
+            left: ${x}px;
+            top: ${y}px;
+            transform: translate(-50%, -50%) scale(0.3);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 1000;
+            filter: drop-shadow(0 0 8px ${color});
+            animation: balloonPop 0.8s ease-out forwards;
+        `;
+        
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 800);
+    }
+
     private createPopup(text: string, pos: THREE.Vector3) {
         const vector = pos.clone();
         let x, y;
@@ -1330,10 +1441,16 @@ class GameEngine {
         el.className = 'score-popup';
         el.innerText = text;
         
+        // Check if text is an emoji/icon (single character or emoji)
+        const isIcon = /^[\p{Emoji}]/u.test(text) || text.length <= 2;
+        
         if (text === "GET READY" || text === "GO!") {
             el.style.transform = 'translate(-50%, -50%)';
             el.style.fontSize = '3rem';
             el.style.textShadow = '0 0 20px cyan';
+        } else if (isIcon) {
+            el.style.fontSize = '2.5rem';
+            el.style.filter = 'drop-shadow(0 0 10px white)';
         }
 
         el.style.left = `${x}px`;
@@ -1538,6 +1655,9 @@ class GameEngine {
     }
 
     private takeDamage(amount: number) {
+        // Ignore damage during quest ending sequence
+        if (this.isGameOverSequence) return;
+        
         // Shield absorbs damage
         if (this.isShieldActive) {
             // Visual feedback for shield hit
@@ -1566,17 +1686,110 @@ class GameEngine {
         }
 
         if (this.health <= 0) {
-            this.isActive = false;
-            this.stopAudio();
-            // Final score is max speed reached * 100
-            this.callbacks.onGameOver(this.maxSpeedReached * 100);
+            if (this.healthLevel > 1) {
+                // Level down: go back one level and restore to max health
+                this.healthLevel--;
+                this.maxHealth = HEALTH_SETTINGS.levelMaxHealth; // 400 HP bar
+                this.health = this.maxHealth; // Start full
+                this.createPopup(`${this.healthLevel}× HULL`, this.plane.position.clone());
+            } else {
+                // At level 1 with no health - start quest ending sequence
+                this.startQuestEnding();
+            }
         }
+    }
+    
+    private startQuestEnding() {
+        if (this.isGameOverSequence) return;
+        this.isGameOverSequence = true;
+        this.gameOverTimer = 0;
+        if (this.questOverlayEl) {
+            this.questOverlayEl.remove();
+            this.questOverlayEl = null;
+        }
+        this.isActive = true; // Keep loop running for animation
+        this.isPaused = false;
+        this.stopAudio();
+    }
+    
+    private runQuestEnding() {
+        const deltaTime = 16.67;
+        this.gameOverTimer += deltaTime;
+        
+        // Gradually accelerate forward and lift upward
+        this.currentSpeed = Math.min(8, this.currentSpeed + 0.08);
+        this.plane.translateZ(-this.currentSpeed);
+        
+        // Smoothly recenter and lift the craft
+        const currentMap = this.getMapAt(this.plane.position.z);
+        this.plane.position.x += (currentMap.x - this.plane.position.x) * 0.05;
+        this.plane.position.y += (currentMap.y - this.plane.position.y) * 0.05 + 0.35;
+        
+        // Tilt nose up slightly
+        this.plane.rotation.x += (-0.18 - this.plane.rotation.x) * 0.08;
+        this.plane.rotation.z *= 0.9;
+        this.plane.rotation.y = -this.plane.rotation.z * 0.5;
+        
+        // Increase fog for dreamy fade effect
+        if (this.scene.fog instanceof THREE.FogExp2) {
+            this.scene.fog.density = Math.min(0.0006, this.scene.fog.density + 0.000002);
+        }
+        
+        // Camera follows and lifts
+        this.camera.position.x += (currentMap.x - this.camera.position.x) * 0.1;
+        this.camera.position.y += (currentMap.y + 40 - this.camera.position.y) * 0.05;
+        this.camera.position.z = this.plane.position.z + 60;
+        this.camera.lookAt(currentMap.x, currentMap.y + 20, this.plane.position.z - 120);
+        
+        // After 2.5 seconds, show the "YOUR QUEST IS OVER" overlay
+        if (this.gameOverTimer >= 2500 && !this.questOverlayEl) {
+            const overlay = document.createElement('div');
+            overlay.innerText = 'YOUR QUEST IS OVER';
+            overlay.className = 'pointer-events-auto select-none';
+            Object.assign(overlay.style, {
+                position: 'fixed',
+                inset: '0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontFamily: '"Orbitron", "Rajdhani", sans-serif',
+                fontSize: 'clamp(36px, 4vw, 72px)',
+                color: '#7ffbff',
+                textShadow: '0 0 18px rgba(0, 255, 255, 0.8), 0 0 32px rgba(0, 180, 255, 0.6)',
+                letterSpacing: '0.3em',
+                background: 'radial-gradient(circle at 50% 50%, rgba(0, 50, 80, 0.35), rgba(0,0,0,0.8))',
+                cursor: 'pointer',
+                zIndex: '9999'
+            });
+            overlay.addEventListener('click', () => this.finishQuestEnding());
+            document.body.appendChild(overlay);
+            this.questOverlayEl = overlay;
+        }
+        
+        this.renderer.render(this.scene, this.camera);
+    }
+    
+    private finishQuestEnding() {
+        if (this.questOverlayEl) {
+            this.questOverlayEl.remove();
+            this.questOverlayEl = null;
+        }
+        this.isGameOverSequence = false;
+        this.isActive = false;
+        this.stopAudio();
+        this.callbacks.onGameOver(this.maxSpeedReached * 100);
     }
 
     private loop = () => {
         if (!this.isActive || this.isPaused) return;
 
         this.frameId = requestAnimationFrame(this.loop);
+        
+        // Handle quest ending sequence separately
+        if (this.isGameOverSequence) {
+            this.runQuestEnding();
+            return;
+        }
         
         // Update buff timers (assuming ~60fps, deltaTime ≈ 16.67ms)
         const deltaTime = 16.67;
@@ -1665,9 +1878,8 @@ class GameEngine {
             this.mousePos.y = this.targetMousePos.y;
 
             // PRECISE LATERAL CONTROL
-            // Decouple from forward speed. Fixed lateral speed + minor boost from speed.
-            // This prevents the plane from jumping across the screen at high speeds.
-            const lateralSpeed = 12.0 + (this.currentSpeed * 0.1); // Increased for responsiveness
+            // Base lateral speed with reduced speed scaling for tighter wall feel at high speeds
+            const lateralSpeed = 8.0 + (this.currentSpeed * 0.5);
             this.plane.position.x += this.mousePos.x * lateralSpeed;
             this.plane.position.y += this.mousePos.y * lateralSpeed;
 
@@ -1689,25 +1901,29 @@ class GameEngine {
         
         // Collision & Constraint Logic
         // wideBoost increases effective tunnel radius (more room to maneuver)
-        const r = CONFIG.tubeRadius + this.wideBoost;
-        const buffer = 20;
+        // Cap wideBoost to prevent excessive radius expansion at high speed
+        const cappedWideBoost = Math.min(this.wideBoost, 40);
+        const r = CONFIG.tubeRadius + cappedWideBoost;
+        const buffer = 30; // Larger buffer for tighter wall constraint
 
         const minX = cx - r + buffer;
         const maxX = cx + r - buffer;
         const minY = cy - r + buffer;
         const maxY = cy + r - buffer;
 
-        const touchingWall = this.plane.position.y <= minY || this.plane.position.y >= maxY ||
-                             this.plane.position.x <= minX || this.plane.position.x >= maxX;
+        // CLAMP FIRST - ensure craft stays within bounds
+        this.plane.position.x = Math.max(minX, Math.min(maxX, this.plane.position.x));
+        this.plane.position.y = Math.max(minY, Math.min(maxY, this.plane.position.y));
+
+        // Then check if touching wall (at the boundary)
+        const touchingWall = this.plane.position.y <= minY + 1 || this.plane.position.y >= maxY - 1 ||
+                             this.plane.position.x <= minX + 1 || this.plane.position.x >= maxX - 1;
         if (touchingWall) {
             this.takeDamage(1.5);
             this.isTouchingWall = true;
         } else {
             this.isTouchingWall = false;
         }
-
-        this.plane.position.x = Math.max(minX, Math.min(maxX, this.plane.position.x));
-        this.plane.position.y = Math.max(minY, Math.min(maxY, this.plane.position.y));
 
         // CAMERA LOGIC
         const playerOffsetX = this.plane.position.x - cx;
@@ -1762,7 +1978,10 @@ class GameEngine {
         // Update Particle Systems
         this.sparkSystem.update();
 
-        if (this.frameId % this.settings.spawnRate === 0 && this.isActive) {
+        // Dynamic spawn rate: faster speed = more frequent ring spawns (reduced overall)
+        // At speed 3.0: spawn every ~80 frames, at speed 10.0: spawn every ~25 frames
+        const dynamicSpawnRate = Math.max(20, Math.floor(250 / this.currentSpeed));
+        if (this.frameId % dynamicSpawnRate === 0 && this.isActive) {
             this.createRing(this.plane.position.z - 600);
         }
 
@@ -1807,7 +2026,10 @@ class GameEngine {
         // Audio disabled - was causing background noise
         // this.updateAudio(this.currentSpeed);
         
-        this.callbacks.onUpdateHUD(this.score, this.health, this.maxHealth, this.healthLevel, this.maxSpeedReached);
+        // Calculate smooth and wide percentages for HUD
+        const smoothPercent = Math.min(100, (this.smoothBoost / RING_EFFECTS.SMOOTH.maxReduction) * 100);
+        const widePercent = Math.min(100, (this.wideBoost / RING_EFFECTS.WIDE.maxBoost) * 100);
+        this.callbacks.onUpdateHUD(this.score, this.health, this.maxHealth, this.healthLevel, this.maxSpeedReached, smoothPercent, widePercent);
 
         this.renderer.render(this.scene, this.camera);
     }

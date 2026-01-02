@@ -10,6 +10,7 @@ interface UIOverlayProps {
     onRestart: () => void;
     onHome: () => void;
     onSaveScore: (name: string) => void;
+    onPause: () => void;
     scoreRef: React.RefObject<HTMLSpanElement>;
     speedRef: React.RefObject<HTMLSpanElement>;
     healthBarRef: React.RefObject<HTMLDivElement>;
@@ -31,6 +32,7 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
     onRestart,
     onHome,
     onSaveScore,
+    onPause,
     scoreRef,
     speedRef,
     healthBarRef,
@@ -104,6 +106,19 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
             {/* Speed Bar - Bottom of screen during gameplay */}
             {gameState === GameState.PLAYING && (
                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-full max-w-xl px-4 pointer-events-none">
+                    {/* Pause Button - Centered above speedometer */}
+                    <div className="flex justify-center mb-3">
+                        <button
+                            onClick={onPause}
+                            className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md border-2 border-cyan-500/50 flex items-center justify-center pointer-events-auto hover:bg-cyan-500/20 hover:border-cyan-400 transition-all duration-200 shadow-[0_0_15px_rgba(0,255,255,0.3)] hover:shadow-[0_0_25px_rgba(0,255,255,0.5)]"
+                            title="Pause"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-cyan-400">
+                                <path fillRule="evenodd" d="M6.75 5.25a.75.75 0 01.75-.75H9a.75.75 0 01.75.75v13.5a.75.75 0 01-.75.75H7.5a.75.75 0 01-.75-.75V5.25zm7.5 0A.75.75 0 0115 4.5h1.5a.75.75 0 01.75.75v13.5a.75.75 0 01-.75.75H15a.75.75 0 01-.75-.75V5.25z" clipRule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+                    
                     {/* Speed readout above the bar */}
                     <div className="mb-2 flex items-center justify-center px-6 py-2 bg-black/50 backdrop-blur-md rounded-lg border border-cyan-500/30 pointer-events-none">
                         <span ref={speedRef} className="font-digital text-4xl md:text-5xl font-black text-cyan-400 drop-shadow-[0_0_10px_rgba(0,255,255,0.8)] tracking-widest w-32 text-center">0</span>
@@ -115,11 +130,30 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
                             <span ref={speedBarRangeRef}>600 - 700 KM/H</span>
                             <span>TOP: <span ref={speedBarTopRef}>0</span></span>
                         </div>
-                        <div ref={speedBarRef} className="h-8 bg-gray-800 rounded-full overflow-hidden relative">
-                            {/* Current speed fill */}
-                            <div ref={speedBarFillRef} className="h-full bg-gradient-to-r from-cyan-500 to-cyan-400 transition-all" style={{ width: '50%' }} />
-                            {/* Top speed needle */}
-                            <div ref={speedBarNeedleRef} className="absolute top-0 h-full w-1 bg-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.8)]" style={{ left: '80%' }} />
+                        <div className="flex items-center gap-3">
+                            {/* Smooth indicator - left side */}
+                            <div className="flex flex-col items-center min-w-[50px]">
+                                <svg viewBox="0 0 40 40" className="w-6 h-6 mb-1">
+                                    <path d="M5 20 Q12 10 20 20 Q28 30 35 20" stroke="#00BFFF" strokeWidth="4" fill="none" strokeLinecap="round"/>
+                                </svg>
+                                <span id="smooth-percent" className="text-xs font-bold text-sky-400 opacity-30 transition-opacity">0%</span>
+                            </div>
+                            
+                            {/* Speed bar */}
+                            <div ref={speedBarRef} className="flex-1 h-8 bg-gray-800 rounded-full overflow-hidden relative">
+                                {/* Current speed fill */}
+                                <div ref={speedBarFillRef} className="h-full bg-gradient-to-r from-cyan-500 to-cyan-400 transition-all" style={{ width: '50%' }} />
+                                {/* Top speed needle */}
+                                <div ref={speedBarNeedleRef} className="absolute top-0 h-full w-1 bg-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.8)]" style={{ left: '80%' }} />
+                            </div>
+                            
+                            {/* Wide indicator - right side */}
+                            <div className="flex flex-col items-center min-w-[50px]">
+                                <svg viewBox="0 0 40 40" className="w-6 h-6 mb-1">
+                                    <path d="M8 20 L16 14 L16 18 L24 18 L24 14 L32 20 L24 26 L24 22 L16 22 L16 26 Z" fill="#C0C0C0"/>
+                                </svg>
+                                <span id="wide-percent" className="text-xs font-bold text-gray-400 opacity-30 transition-opacity">0%</span>
+                            </div>
                         </div>
                     </div>
                 </div>

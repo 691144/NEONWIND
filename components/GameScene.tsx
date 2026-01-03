@@ -412,6 +412,7 @@ class GameEngine {
     // Decay-based buff boosts (permanent but decay over time)
     private smoothBoost: number = 0;  // Current reduction to turn aggression
     private wideBoost: number = 0;    // Current tunnel width bonus
+    private ringSpawnTimer: number = 0; // Countdown timer for ring spawning
     
     // Shield visual mesh
     private shieldMesh: THREE.Mesh | null = null;
@@ -1145,27 +1146,39 @@ class GameEngine {
 
         let { currentX, currentY, targetX, targetY, vx, vy, segmentTimer } = this.mapGenState;
 
+        // Smoother physics: lower accel, higher drag, capped velocity
+        const accel = 0.00003;       // was 0.00005 — less sudden curves
+        const drag = 0.975;          // was 0.985 — more damping
+        const maxVel = 1.5 * turnFactor; // cap velocity to prevent sudden jumps
+
         for (let i = 0; i < mapSteps; i++) {
             if (segmentTimer <= 0) {
-                // More frequent changes (more twists)
-                segmentTimer = 150 + Math.floor(Math.random() * 350); 
+                // Slightly longer segments for less frequent direction changes
+                segmentTimer = 200 + Math.floor(Math.random() * 400);
 
-                const range = 3000 * turnFactor; 
+                const range = 2500 * turnFactor; // reduced from 3000
                 targetX = (Math.random() - 0.5) * range;
                 targetY = (Math.random() - 0.5) * range;
             }
 
-            // Standard smoothed random walk physics
+            // Smoothed random walk physics with velocity cap
             const dx = targetX - currentX;
             const dy = targetY - currentY;
-            
-            // Increased responsiveness for tighter turns
-            vx += dx * 0.00005;
-            vy += dy * 0.00005;
 
-            // Slightly more drag to keep it controlled (not aggressive)
-            vx *= 0.985;
-            vy *= 0.985;
+            vx += dx * accel;
+            vy += dy * accel;
+
+            // Apply drag
+            vx *= drag;
+            vy *= drag;
+
+            // Cap velocity magnitude to prevent sudden jumps
+            const vel = Math.hypot(vx, vy);
+            if (vel > maxVel) {
+                const scale = maxVel / vel;
+                vx *= scale;
+                vy *= scale;
+            }
 
             currentX += vx;
             currentY += vy;
@@ -1597,8 +1610,9 @@ class GameEngine {
         const cappedWideBoost = Math.min(this.wideBoost, 40);
         const r = CONFIG.tubeRadius + cappedWideBoost;
 
-        // Brighter base color
-        const baseColor = new THREE.Color(0x151515);
+        // Brighter base color — shift toward cyan when WIDE is active for visual feedback
+        const wideRatio = Math.min(1, this.wideBoost / 40);
+        const baseColor = new THREE.Color(0x151515).lerp(new THREE.Color(0x102030), wideRatio * 0.5);
         const warnColor = new THREE.Color(0xFF0033);
 
         // Geometric Constants
@@ -2145,11 +2159,13 @@ class GameEngine {
         // Update Particle Systems
         this.sparkSystem.update();
 
-        // Dynamic spawn rate: faster speed = more frequent ring spawns (reduced overall)
-        // At speed 3.0: spawn every ~80 frames, at speed 10.0: spawn every ~25 frames
+        // Dynamic spawn rate using countdown timer (not modulo) to avoid gaps
+        // Faster speed = more frequent ring spawns
         const dynamicSpawnRate = Math.max(20, Math.floor(250 / this.currentSpeed));
-        if (this.frameId % dynamicSpawnRate === 0 && this.isActive) {
+        this.ringSpawnTimer--;
+        if (this.ringSpawnTimer <= 0 && this.isActive) {
             this.createRing(this.plane.position.z - 600);
+            this.ringSpawnTimer = dynamicSpawnRate; // reset timer
         }
 
         for(let i = this.rings.length - 1; i >= 0; i--) {

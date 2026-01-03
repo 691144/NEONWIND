@@ -412,7 +412,6 @@ class GameEngine {
     // Decay-based buff boosts (permanent but decay over time)
     private smoothBoost: number = 0;  // Current reduction to turn aggression
     private wideBoost: number = 0;    // Current tunnel width bonus
-    private ringSpawnTimer: number = 0; // Countdown timer for ring spawning
     
     // Shield visual mesh
     private shieldMesh: THREE.Mesh | null = null;
@@ -457,6 +456,7 @@ class GameEngine {
     // Wall Contact State
     private isTouchingWall: boolean = false;
     private shipHalfExtentXY: number = 10;
+    private spawnTick: number = 0; // Dedicated frame counter for spawns
 
     // Tap Detection for Mobile Pause
     private tapStartTime: number = 0;
@@ -1096,6 +1096,7 @@ class GameEngine {
         this.rings = [];
         this.particles.forEach(p => this.scene.remove(p));
         this.particles = [];
+        this.spawnTick = 0;
         
         this.sparkSystem.reset();
 
@@ -1146,39 +1147,36 @@ class GameEngine {
 
         let { currentX, currentY, targetX, targetY, vx, vy, segmentTimer } = this.mapGenState;
 
-        // Smoother physics: lower accel, higher drag, capped velocity
-        const accel = 0.00003;       // was 0.00005 — less sudden curves
-        const drag = 0.975;          // was 0.985 — more damping
-        const maxVel = 1.5 * turnFactor; // cap velocity to prevent sudden jumps
-
         for (let i = 0; i < mapSteps; i++) {
             if (segmentTimer <= 0) {
-                // Slightly longer segments for less frequent direction changes
-                segmentTimer = 200 + Math.floor(Math.random() * 400);
+                // Less frequent, smoother direction changes
+                segmentTimer = 220 + Math.floor(Math.random() * 260);
 
-                const range = 2500 * turnFactor; // reduced from 3000
-                targetX = (Math.random() - 0.5) * range;
-                targetY = (Math.random() - 0.5) * range;
+                // Lower range to avoid huge jumps; still scales with turnFactor
+                const range = 1800 * turnFactor;
+                const newTargetX = (Math.random() - 0.5) * range;
+                const newTargetY = (Math.random() - 0.5) * range;
+
+                // Ease targets to prevent abrupt flips
+                targetX = targetX * 0.6 + newTargetX * 0.4;
+                targetY = targetY * 0.6 + newTargetY * 0.4;
             }
 
-            // Smoothed random walk physics with velocity cap
             const dx = targetX - currentX;
             const dy = targetY - currentY;
+            
+            // Softer acceleration for smoother curves
+            vx += dx * 0.00003;
+            vy += dy * 0.00003;
 
-            vx += dx * accel;
-            vy += dy * accel;
+            // Slightly higher damping to damp spikes
+            vx *= 0.99;
+            vy *= 0.99;
 
-            // Apply drag
-            vx *= drag;
-            vy *= drag;
-
-            // Cap velocity magnitude to prevent sudden jumps
-            const vel = Math.hypot(vx, vy);
-            if (vel > maxVel) {
-                const scale = maxVel / vel;
-                vx *= scale;
-                vy *= scale;
-            }
+            // Clamp lateral velocity to avoid sudden huge swings
+            const maxV = 60;
+            vx = Math.max(-maxV, Math.min(maxV, vx));
+            vy = Math.max(-maxV, Math.min(maxV, vy));
 
             currentX += vx;
             currentY += vy;
@@ -1607,12 +1605,13 @@ class GameEngine {
         const playerY = this.plane.position.y;
         // IMPORTANT: Render walls at the same radius used for collision/constraints
         // Otherwise the ship can be clamped outside the visible tunnel (especially with WIDE active).
-        const cappedWideBoost = Math.min(this.wideBoost, 40);
+        const cappedWideBoost = Math.min(this.wideBoost, 60);
+        // Use a small visual bump so width changes are noticeable; collisions still use r.
         const r = CONFIG.tubeRadius + cappedWideBoost;
+        const renderR = r * (1 + cappedWideBoost / 400); // up to +15% at cap
 
-        // Brighter base color — shift toward cyan when WIDE is active for visual feedback
-        const wideRatio = Math.min(1, this.wideBoost / 40);
-        const baseColor = new THREE.Color(0x151515).lerp(new THREE.Color(0x102030), wideRatio * 0.5);
+        // Brighter base color
+        const baseColor = new THREE.Color(0x151515);
         const warnColor = new THREE.Color(0xFF0033);
 
         // Geometric Constants
@@ -1657,8 +1656,8 @@ class GameEngine {
 
             // Use helper method for distance calculation
             const distToWall = wallIndex <= 1
-                ? this.getDistToWall(wallIndex, playerY, currentMap.y, r)
-                : this.getDistToWall(wallIndex, playerX, currentMap.x, r);
+                ? this.getDistToWall(wallIndex, playerY, currentMap.y, renderR)
+                : this.getDistToWall(wallIndex, playerX, currentMap.x, renderR);
 
             const safeDist = 90;
             const dangerDist = 20;
@@ -1705,7 +1704,7 @@ class GameEngine {
                 const ringGlow = Math.pow(Math.max(0, 1 - distToRingCenter / 20), 8) + Math.max(0, 1 - distToRingCenter / 60) * 0.15;
 
                 // Use helper method for wall bounds
-                const bounds = this.getWallBounds(wallIndex, center, r, worldZ);
+                const bounds = this.getWallBounds(wallIndex, center, renderR, worldZ);
                 const { x1, y1, z1, x2, y2, z2 } = bounds;
 
                 const rowOffset = i * cols;
@@ -1900,6 +1899,7 @@ class GameEngine {
         if (!this.isActive || this.isPaused) return;
 
         this.frameId = requestAnimationFrame(this.loop);
+        this.spawnTick++;
         
         // Handle quest ending sequence separately
         if (this.isGameOverSequence) {
@@ -1998,7 +1998,7 @@ class GameEngine {
             const preCy = preMovementMap.y;
             
             // Calculate effective radius (with wideBoost cap)
-            const preCappedWideBoost = Math.min(this.wideBoost, 40);
+            const preCappedWideBoost = Math.min(this.wideBoost, 60);
             const preR = CONFIG.tubeRadius + preCappedWideBoost;
             const safeMargin = 2; // Keep a tiny buffer from the wall
             const preInnerR = Math.max(1, preR - this.shipHalfExtentXY - safeMargin);
@@ -2051,7 +2051,7 @@ class GameEngine {
         const aheadMap = this.getMapAt(this.plane.position.z - this.currentSpeed * 2); // Look ahead 2 frames
         
         // Use the same effective radius as rendering
-        const cappedWideBoost = Math.min(this.wideBoost, 40);
+        const cappedWideBoost = Math.min(this.wideBoost, 60);
         const r = CONFIG.tubeRadius + cappedWideBoost;
 
         // The tunnel is rendered as 4 axis-aligned walls, so collision must be square too.
@@ -2159,13 +2159,11 @@ class GameEngine {
         // Update Particle Systems
         this.sparkSystem.update();
 
-        // Dynamic spawn rate using countdown timer (not modulo) to avoid gaps
-        // Faster speed = more frequent ring spawns
+        // Dynamic spawn rate: faster speed = more frequent ring spawns (reduced overall)
+        // At speed 3.0: spawn every ~80 frames, at speed 10.0: spawn every ~25 frames
         const dynamicSpawnRate = Math.max(20, Math.floor(250 / this.currentSpeed));
-        this.ringSpawnTimer--;
-        if (this.ringSpawnTimer <= 0 && this.isActive) {
+        if (this.spawnTick % dynamicSpawnRate === 0 && this.isActive) {
             this.createRing(this.plane.position.z - 600);
-            this.ringSpawnTimer = dynamicSpawnRate; // reset timer
         }
 
         for(let i = this.rings.length - 1; i >= 0; i--) {

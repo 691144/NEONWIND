@@ -131,8 +131,15 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
                         {/* Orientation toggle button - mobile only */}
                         <button
                             onClick={() => {
-                                if (screen.orientation && screen.orientation.lock) {
-                                    screen.orientation.lock(isLandscape ? 'portrait' : 'landscape').catch(() => {});
+                                const o: any = (screen as any).orientation;
+                                if (o && typeof o.lock === 'function') {
+                                    // Prefer primary orientations so we switch portrait<->landscape
+                                    // instead of flipping between landscape-primary/secondary.
+                                    const target = isLandscape ? 'portrait-primary' : 'landscape-primary';
+                                    o.lock(target).catch(() => {
+                                        // Fallbacks for older implementations
+                                        o.lock(isLandscape ? 'portrait' : 'landscape').catch(() => {});
+                                    });
                                 }
                             }}
                             className={

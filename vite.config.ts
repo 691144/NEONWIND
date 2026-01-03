@@ -22,7 +22,9 @@ export default defineConfig(({ mode }) => {
             theme_color: '#0a0a15',
             background_color: '#000000',
             display: 'standalone',
-            orientation: 'landscape',
+            // Allow portrait + landscape. Forcing landscape prevents true portrait rotation
+            // and can result in only 180° flips between landscape-primary/secondary.
+            orientation: 'any',
             scope: '/',
             start_url: '/',
             icons: [

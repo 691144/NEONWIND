@@ -169,12 +169,42 @@ export const GameScene: React.FC<GameSceneProps> = ({
             }
         };
         const handleOrientationChange = () => {
-            // Delay resize to allow browser to complete orientation change
-            setTimeout(() => engine.onWindowResize(), 100);
+            // Apply immediately, then re-apply for a short time until the viewport settles.
+            // This avoids big delays (momentum loss) but prevents jitter when the browser UI
+            // reports a couple of intermediate sizes during rotation.
+            engine.onWindowResize();
+
+            let lastW = window.innerWidth;
+            let lastH = window.innerHeight;
+            let stableFrames = 0;
+            const start = performance.now();
+
+            const tick = () => {
+                const w = window.innerWidth;
+                const h = window.innerHeight;
+                if (w === lastW && h === lastH) stableFrames++;
+                else {
+                    stableFrames = 0;
+                    lastW = w;
+                    lastH = h;
+                }
+
+                engine.onWindowResize();
+
+                // Small inertia threshold: require a couple stable frames, but don't wait long.
+                if (stableFrames < 2 && performance.now() - start < 250) {
+                    requestAnimationFrame(tick);
+                }
+            };
+
+            requestAnimationFrame(tick);
         };
 
         window.addEventListener('resize', handleResize);
         window.addEventListener('orientationchange', handleOrientationChange);
+        // Some mobile browsers update viewport via VisualViewport before/without orientationchange.
+        const vv = window.visualViewport;
+        vv?.addEventListener('resize', handleOrientationChange);
         document.addEventListener('mousemove', handleMouseMove);
         document.addEventListener('touchstart', handleTouchStart, { passive: false });
         document.addEventListener('touchmove', handleTouchMove, { passive: false });
@@ -184,6 +214,7 @@ export const GameScene: React.FC<GameSceneProps> = ({
         return () => {
             window.removeEventListener('resize', handleResize);
             window.removeEventListener('orientationchange', handleOrientationChange);
+            vv?.removeEventListener('resize', handleOrientationChange);
             document.removeEventListener('mousemove', handleMouseMove);
             document.removeEventListener('touchstart', handleTouchStart);
             document.removeEventListener('touchmove', handleTouchMove);

@@ -3,6 +3,12 @@ import { GameScene } from './components/GameScene';
 import { UIOverlay } from './components/UIOverlay';
 import { GameState, LeaderboardEntry } from './types';
 
+function getIsLandscape() {
+    return window.matchMedia
+        ? window.matchMedia('(orientation: landscape)').matches
+        : window.innerWidth > window.innerHeight;
+}
+
 function App() {
     const [gameState, setGameState] = useState<GameState>(GameState.SPLASH);
     const [startSpeed, setStartSpeed] = useState<number>(300);
@@ -22,6 +28,11 @@ function App() {
     const speedBarTopRef = useRef<HTMLSpanElement>(null);
     const pauseOverlayRef = useRef<HTMLDivElement>(null);
     const gameSceneRef = useRef<{ togglePause: () => void } | null>(null);
+    const [isLandscape, setIsLandscape] = useState<boolean>(() => {
+        // SSR not used here, but keep it safe.
+        if (typeof window === 'undefined') return false;
+        return getIsLandscape();
+    });
 
     // Load leaderboard on mount
     useEffect(() => {
@@ -33,6 +44,48 @@ function App() {
                 console.error("Failed to parse leaderboard", e);
             }
         }
+    }, []);
+
+    // Orientation: update immediately, with a tiny stability threshold.
+    useEffect(() => {
+        let rafId = 0;
+        let last = getIsLandscape();
+        let stableFrames = 0;
+
+        const update = () => {
+            const next = getIsLandscape();
+            if (next === last) stableFrames++;
+            else {
+                last = next;
+                stableFrames = 0;
+            }
+
+            // Small inertia threshold: require a couple stable frames to avoid bouncing.
+            if (stableFrames >= 2) {
+                setIsLandscape(next);
+                stableFrames = 0;
+            }
+            rafId = requestAnimationFrame(update);
+        };
+
+        rafId = requestAnimationFrame(update);
+
+        const kick = () => {
+            // Immediate kick on known events.
+            last = getIsLandscape();
+            stableFrames = 2;
+        };
+
+        window.addEventListener('orientationchange', kick);
+        window.addEventListener('resize', kick);
+        window.visualViewport?.addEventListener('resize', kick);
+
+        return () => {
+            cancelAnimationFrame(rafId);
+            window.removeEventListener('orientationchange', kick);
+            window.removeEventListener('resize', kick);
+            window.visualViewport?.removeEventListener('resize', kick);
+        };
     }, []);
 
     const handleDismissSplash = () => {
@@ -100,6 +153,7 @@ function App() {
                 gameState={gameState}
                 lastScore={lastScore}
                 leaderboard={leaderboard}
+                isLandscape={isLandscape}
                 onDismissSplash={handleDismissSplash}
                 onStart={handleStart}
                 onRestart={handleRestart}

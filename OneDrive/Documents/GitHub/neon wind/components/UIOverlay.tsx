@@ -266,21 +266,21 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
                     {/* Dark overlay specifically for readability if image is present */}
                     <div className={`absolute inset-0 ${splashImage ? 'bg-black/40 backdrop-blur-sm' : 'bg-transparent'}`} />
 
-                    <div className="relative z-10 bg-black/80 p-8 rounded-lg border-2 border-cyan-400 text-center text-white shadow-[0_0_30px_rgba(0,242,255,0.4)] max-w-lg w-[90%] my-8 backdrop-blur-md">
-                        <h1 className="text-4xl md:text-5xl font-black text-cyan-400 uppercase tracking-widest mb-4 drop-shadow-[0_0_10px_rgba(0,255,255,0.8)]">
+                    <div className="relative z-10 bg-black/80 p-4 landscape:p-3 rounded-lg border-2 border-cyan-400 text-center text-white shadow-[0_0_30px_rgba(0,242,255,0.4)] max-w-lg w-[95%] max-h-[90vh] overflow-y-auto my-2 backdrop-blur-md">
+                        <h1 className="text-2xl landscape:text-xl md:text-4xl font-black text-cyan-400 uppercase tracking-widest mb-2 drop-shadow-[0_0_10px_rgba(0,255,255,0.8)]">
                             Neon Winder
                         </h1>
-                        <p className="mb-4 text-gray-300 text-sm">
+                        <p className="mb-2 text-gray-300 text-xs landscape:text-[10px]">
                             The tunnel winds aggressively. Maintain velocity.
-                            <br/><span className="text-xs text-red-400 mt-1 block">Walls glow RED when you are too close!</span>
+                            <br/><span className="text-[10px] landscape:text-[9px] text-red-400 mt-1 block">Walls glow RED when you are too close!</span>
                         </p>
 
-                        <div className="mb-6 p-4 bg-gray-900/50 rounded-lg border border-gray-700">
-                            <p className="text-cyan-400 text-xs font-bold uppercase tracking-widest mb-4">Select Difficulty</p>
-                            <div className="flex gap-3">
+                        <div className="mb-3 landscape:mb-2 p-3 landscape:p-2 bg-gray-900/50 rounded-lg border border-gray-700">
+                            <p className="text-cyan-400 text-[10px] font-bold uppercase tracking-widest mb-2">Select Difficulty</p>
+                            <div className="flex gap-2">
                                 <button
                                     onClick={() => setStartSpeed(300)}
-                                    className={`flex-1 py-3 px-2 rounded font-black uppercase tracking-wider transition-all text-sm ${
+                                    className={`flex-1 py-2 landscape:py-1.5 px-1 rounded font-black uppercase tracking-wider transition-all text-xs landscape:text-[10px] ${
                                         startSpeed === 300
                                             ? 'bg-cyan-400 text-black shadow-[0_0_15px_rgba(0,255,255,0.8)]'
                                             : 'bg-transparent border-2 border-gray-600 text-gray-400 hover:border-cyan-400'
@@ -290,7 +290,7 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
                                 </button>
                                 <button
                                     onClick={() => setStartSpeed(500)}
-                                    className={`flex-1 py-3 px-2 rounded font-black uppercase tracking-wider transition-all text-sm ${
+                                    className={`flex-1 py-2 landscape:py-1.5 px-1 rounded font-black uppercase tracking-wider transition-all text-xs landscape:text-[10px] ${
                                         startSpeed === 500
                                             ? 'bg-yellow-500 text-black shadow-[0_0_15px_rgba(234,179,8,0.8)]'
                                             : 'bg-transparent border-2 border-gray-600 text-gray-400 hover:border-yellow-500'
@@ -300,7 +300,7 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
                                 </button>
                                 <button
                                     onClick={() => setStartSpeed(700)}
-                                    className={`flex-1 py-3 px-2 rounded font-black uppercase tracking-wider transition-all text-sm ${
+                                    className={`flex-1 py-2 landscape:py-1.5 px-1 rounded font-black uppercase tracking-wider transition-all text-xs landscape:text-[10px] ${
                                         startSpeed === 700
                                             ? 'bg-red-500 text-black shadow-[0_0_15px_rgba(239,68,68,0.8)]'
                                             : 'bg-transparent border-2 border-gray-600 text-gray-400 hover:border-red-500'
@@ -309,9 +309,9 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
                                     Ace
                                 </button>
                             </div>
-                            <div className="mt-4 text-center">
-                                <span className="text-white font-mono">{startSpeed} <span className="text-xs text-gray-400">KM/H</span></span>
-                                <span className="text-xs text-gray-500 block mt-1">
+                            <div className="mt-2 text-center">
+                                <span className="text-white font-mono text-sm">{startSpeed} <span className="text-[10px] text-gray-400">KM/H</span></span>
+                                <span className="text-[9px] text-gray-500 block mt-0.5">
                                     {startSpeed === 300 && '1.0× acceleration'}
                                     {startSpeed === 500 && '1.25× acceleration'}
                                     {startSpeed === 700 && '1.5× acceleration'}
@@ -321,31 +321,31 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
 
                         <button
                             onClick={() => onStart(startSpeed, startSpeed === 300 ? "CADET" : startSpeed === 500 ? "PILOT" : "ACE")}
-                            className="bg-transparent border-2 border-cyan-400 py-3 px-10 text-cyan-400 font-black text-xl uppercase rounded hover:bg-cyan-400 hover:text-black hover:shadow-[0_0_20px_rgba(0,255,255,1)] transition-all duration-200 mb-6 w-full"
+                            className="bg-transparent border-2 border-cyan-400 py-2 landscape:py-1.5 px-6 text-cyan-400 font-black text-base landscape:text-sm uppercase rounded hover:bg-cyan-400 hover:text-black hover:shadow-[0_0_20px_rgba(0,255,255,1)] transition-all duration-200 mb-3 landscape:mb-2 w-full"
                         >
                             Engage
                         </button>
 
                         {/* Leaderboard Preview */}
-                        <div className="text-left border-t border-gray-700 pt-4">
-                            <h3 className="text-cyan-400 uppercase font-bold mb-2 text-center text-xs">Top Aces</h3>
+                        <div className="text-left border-t border-gray-700 pt-2">
+                            <h3 className="text-cyan-400 uppercase font-bold mb-1 text-center text-[10px]">Top Aces</h3>
                             {leaderboard.length === 0 ? (
-                                <p className="text-center text-gray-500 text-xs">No records yet.</p>
+                                <p className="text-center text-gray-500 text-[10px]">No records yet.</p>
                             ) : (
-                                <table className="w-full text-xs text-gray-300">
+                                <table className="w-full text-[10px] text-gray-300">
                                     <thead>
                                         <tr className="border-b border-gray-700">
-                                            <th className="py-1 text-left">Pilot</th>
-                                            <th className="py-1 text-center">Rank</th>
-                                            <th className="py-1 text-right">Speed</th>
+                                            <th className="py-0.5 text-left">Pilot</th>
+                                            <th className="py-0.5 text-center">Rank</th>
+                                            <th className="py-0.5 text-right">Speed</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {leaderboard.slice(0, 3).map((entry, idx) => (
                                             <tr key={idx} className="border-b border-gray-800 last:border-0">
-                                                <td className="py-1">{entry.name}</td>
-                                                <td className="py-1 text-center text-gray-500">{entry.difficulty}</td>
-                                                <td className="py-1 text-right font-mono text-cyan-400">{Math.floor(entry.score)}</td>
+                                                <td className="py-0.5">{entry.name}</td>
+                                                <td className="py-0.5 text-center text-gray-500">{entry.difficulty}</td>
+                                                <td className="py-0.5 text-right font-mono text-cyan-400">{Math.floor(entry.score)}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -358,49 +358,49 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
 
             {/* Game Over Menu */}
             {gameState === GameState.GAME_OVER && (
-                <div className="absolute inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center pointer-events-auto transition-opacity duration-300 overflow-y-auto">
-                    <div className="bg-black/80 p-8 rounded-lg border-2 border-red-500 text-center text-white shadow-[0_0_30px_rgba(255,56,96,0.4)] max-w-lg w-[90%] my-8">
-                        <h1 className="text-4xl md:text-5xl font-black text-red-500 uppercase tracking-widest mb-2 drop-shadow-[0_0_10px_rgba(255,56,96,0.8)]">
+                <div className="absolute inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center pointer-events-auto transition-opacity duration-300 overflow-y-auto py-2">
+                    <div className="bg-black/80 p-4 landscape:p-3 rounded-lg border-2 border-red-500 text-center text-white shadow-[0_0_30px_rgba(255,56,96,0.4)] max-w-lg w-[95%] max-h-[95vh] overflow-y-auto">
+                        <h1 className="text-2xl landscape:text-xl md:text-4xl font-black text-red-500 uppercase tracking-widest mb-1 drop-shadow-[0_0_10px_rgba(255,56,96,0.8)]">
                             Critical Error
                         </h1>
-                        <p className="mb-6 text-gray-300">Hull breach detected.</p>
+                        <p className="mb-3 landscape:mb-2 text-gray-300 text-xs">Hull breach detected.</p>
                         
-                        <div className="flex flex-col mb-8">
-                            <span className="text-xs text-red-400 uppercase tracking-widest font-bold">Final Velocity</span>
-                            <span className="font-mono text-4xl font-bold">{Math.floor(lastScore)} <span className="text-sm align-top">KM/H</span></span>
+                        <div className="flex flex-col mb-4 landscape:mb-2">
+                            <span className="text-[10px] text-red-400 uppercase tracking-widest font-bold">Final Velocity</span>
+                            <span className="font-mono text-2xl landscape:text-xl font-bold">{Math.floor(lastScore)} <span className="text-xs align-top">KM/H</span></span>
                         </div>
 
                         {/* Score Submission */}
                         {!hasSubmitted && lastScore > 0 && (
-                            <div className="mb-8 flex gap-2 justify-center">
+                            <div className="mb-4 landscape:mb-2 flex gap-2 justify-center">
                                 <input 
                                     type="text" 
-                                    placeholder="ENTER CALLSIGN" 
+                                    placeholder="CALLSIGN" 
                                     maxLength={10}
                                     value={playerName}
                                     onChange={(e) => setPlayerName(e.target.value.toUpperCase())}
-                                    className="bg-gray-900 border border-gray-600 text-white px-4 py-2 rounded text-center uppercase tracking-widest outline-none focus:border-cyan-400"
+                                    className="bg-gray-900 border border-gray-600 text-white px-3 py-1.5 rounded text-center text-sm uppercase tracking-widest outline-none focus:border-cyan-400 w-32"
                                 />
                                 <button 
                                     onClick={handleSubmitScore}
                                     disabled={playerName.length === 0}
-                                    className="bg-cyan-900 border border-cyan-400 px-4 py-2 rounded text-cyan-400 font-bold hover:bg-cyan-400 hover:text-black disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="bg-cyan-900 border border-cyan-400 px-3 py-1.5 rounded text-cyan-400 font-bold text-sm hover:bg-cyan-400 hover:text-black disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     SAVE
                                 </button>
                             </div>
                         )}
                         
-                        <div className="flex flex-col gap-4">
+                        <div className="flex flex-col gap-2">
                             <button 
                                 onClick={() => { setHasSubmitted(false); setPlayerName(""); onRestart(); }}
-                                className="bg-transparent border-2 border-red-500 py-3 px-10 text-red-500 font-black text-xl uppercase rounded hover:bg-red-500 hover:text-black hover:shadow-[0_0_20px_rgba(255,56,96,1)] transition-all duration-200"
+                                className="bg-transparent border-2 border-red-500 py-2 landscape:py-1.5 px-6 text-red-500 font-black text-base landscape:text-sm uppercase rounded hover:bg-red-500 hover:text-black hover:shadow-[0_0_20px_rgba(255,56,96,1)] transition-all duration-200"
                             >
                                 Reboot System
                             </button>
                             <button 
                                 onClick={() => { setHasSubmitted(false); setPlayerName(""); onHome(); }}
-                                className="bg-transparent border border-white/30 py-2 px-8 text-gray-300 font-bold text-lg uppercase rounded hover:bg-white hover:text-black transition-all duration-200"
+                                className="bg-transparent border border-white/30 py-1.5 landscape:py-1 px-6 text-gray-300 font-bold text-sm landscape:text-xs uppercase rounded hover:bg-white hover:text-black transition-all duration-200"
                             >
                                 Return to Base
                             </button>
@@ -413,12 +413,13 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
             <div
                 ref={pauseOverlayRef}
                 id="pause-overlay"
-                className="pointer-events-none select-none fixed inset-0 z-50 hidden items-center justify-center bg-black/75 backdrop-blur-sm"
-                style={{ display: 'none' }}
+                onClick={onPause}
+                className="select-none fixed inset-0 z-50 items-center justify-center bg-black/75 backdrop-blur-sm cursor-pointer"
+                style={{ display: 'none', pointerEvents: 'auto' }}
             >
-                <div className="px-10 py-8 min-w-[320px] bg-black/90 border-2 border-cyan-300 rounded-2xl text-cyan-100 font-mono text-center shadow-[0_0_32px_rgba(0,255,255,0.55)] ring-1 ring-cyan-400/40">
-                    <div className="text-3xl font-black tracking-[0.3em] drop-shadow-[0_0_14px_rgba(0,255,255,0.7)]">PAUSED</div>
-                    <div className="text-base mt-3 opacity-85">Tap to continue</div>
+                <div className="px-6 py-5 landscape:px-4 landscape:py-3 min-w-[240px] landscape:min-w-[200px] bg-black/90 border-2 border-cyan-300 rounded-2xl text-cyan-100 font-mono text-center shadow-[0_0_32px_rgba(0,255,255,0.55)] ring-1 ring-cyan-400/40">
+                    <div className="text-2xl landscape:text-xl font-black tracking-[0.3em] drop-shadow-[0_0_14px_rgba(0,255,255,0.7)]">PAUSED</div>
+                    <div className="text-sm landscape:text-xs mt-2 opacity-85">Tap to continue</div>
                 </div>
             </div>
         </div>
